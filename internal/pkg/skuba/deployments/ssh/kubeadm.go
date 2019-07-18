@@ -20,6 +20,8 @@ package ssh
 import (
 	"path/filepath"
 
+	"k8s.io/klog"
+
 	"github.com/pkg/errors"
 
 	"github.com/SUSE/skuba/internal/pkg/skuba/deployments"
@@ -41,6 +43,13 @@ func kubeadmInit(t *Target, data interface{}) error {
 	bootstrapConfiguration, ok := data.(deployments.BootstrapConfiguration)
 	if !ok {
 		return errors.New("couldn't access bootstrap configuration")
+	}
+
+	if _, ok = bootstrapConfiguration.KubeadmExtraArgs["cloud-provider"]; ok {
+		// Do we want to error if this fails or just warn?
+		if err := t.target.UploadFile(skuba.OpenstackCloudConfFile(), skuba.OpenstackConfigRuntimeFile()); err != nil {
+			klog.Error("error uploading cloud integration config file: {}", err)
+		}
 	}
 
 	if err := t.target.UploadFile(skuba.KubeadmInitConfFile(), remoteKubeadmInitConfFile); err != nil {
@@ -72,6 +81,13 @@ func kubeadmJoin(t *Target, data interface{}) error {
 		return err
 	}
 	defer t.ssh("rm", remoteKubeadmInitConfFile)
+
+	if _, ok = joinConfiguration.KubeadmExtraArgs["cloud-provider"]; ok {
+		// Do we want to error if this fails or just warn?
+		if err := t.target.UploadFile(skuba.OpenstackCloudConfFile(), skuba.OpenstackConfigRuntimeFile()); err != nil {
+			klog.Error("error uploading cloud integration config file: {}", err)
+		}
+	}
 
 	ignorePreflightErrors := ""
 	ignorePreflightErrorsVal := joinConfiguration.KubeadmExtraArgs["ignore-preflight-errors"]

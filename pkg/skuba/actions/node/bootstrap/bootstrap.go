@@ -33,6 +33,8 @@ import (
 	"github.com/SUSE/skuba/internal/pkg/skuba/kubernetes"
 	"github.com/SUSE/skuba/internal/pkg/skuba/node"
 	"github.com/SUSE/skuba/pkg/skuba"
+	"github.com/SUSE/skuba/pkg/skuba/actions"
+	"github.com/SUSE/skuba/pkg/skuba/cloud"
 )
 
 // Bootstrap initializes the first master node of the cluster
@@ -59,11 +61,19 @@ func Bootstrap(bootstrapConfiguration deployments.BootstrapConfiguration, target
 		return err
 	}
 
+	if cloud.HasCloudIntegration(actions.Bootstrap) {
+		setCloudConfiguration(initConfiguration)
+	}
+
 	versionToDeploy := kubernetes.LatestVersion()
 
 	fmt.Println("[bootstrap] updating init configuration with target information")
 	if err := node.AddTargetInformationToInitConfigurationWithClusterVersion(target, initConfiguration, versionToDeploy); err != nil {
 		return errors.Wrap(err, "unable to add target information to init configuration")
+	}
+
+	if cloud.HasCloudIntegration(actions.Bootstrap) {
+		setCloudConfiguration(initConfiguration)
 	}
 
 	setApiserverAdmissionPlugins(initConfiguration)
@@ -143,4 +153,33 @@ func setApiserverAdmissionPlugins(initConfiguration *kubeadmapi.InitConfiguratio
 		initConfiguration.APIServer.ControlPlaneComponent.ExtraArgs = map[string]string{}
 	}
 	initConfiguration.APIServer.ControlPlaneComponent.ExtraArgs["enable-admission-plugins"] = "NodeRestriction,PodSecurityPolicy"
+}
+
+func setCloudConfigurationPath(initConfiguration *kubeadmapi.InitConfiguration) {
+	cloudConfig := []kubeadmapi.HostPathMount{}
+	test := kubeadmapi.HostPathMount{"cloud-config", "/etc/kubernetes/cloud-config", "/etc/kubernetes/cloud-config", true, "FileOrCreate"}
+	cloudConfig = append(cloudConfig, test)
+	initConfiguration.APIServer.ControlPlaneComponent.ExtraVolumes = cloudConfig
+	initConfiguration.ControllerManager.ExtraVolumes = cloudConfig
+}
+
+func setCloudConfiguration(initConfiguration *kubeadmapi.InitConfiguration) {
+
+	if initConfiguration.NodeRegistration.KubeletExtraArgs == nil {
+		initConfiguration.NodeRegistration.KubeletExtraArgs = map[string]string{}
+	}
+	initConfiguration.NodeRegistration.KubeletExtraArgs["cloud-provider"] = "openstack"
+	initConfiguration.NodeRegistration.KubeletExtraArgs["cloud-config"] = "/etc/kubernetes/cloud-config"
+
+	if initConfiguration.APIServer.ControlPlaneComponent.ExtraArgs == nil {
+		initConfiguration.APIServer.ControlPlaneComponent.ExtraArgs = map[string]string{}
+	}
+	initConfiguration.APIServer.ControlPlaneComponent.ExtraArgs["cloud-provider"] = "openstack"
+	initConfiguration.APIServer.ControlPlaneComponent.ExtraArgs["cloud-config"] = "/etc/kubernetes/cloud-config"
+
+	if initConfiguration.ControllerManager.ExtraArgs == nil {
+		initConfiguration.ControllerManager.ExtraArgs = map[string]string{}
+	}
+	initConfiguration.ControllerManager.ExtraArgs["cloud-provider"] = "openstack"
+	initConfiguration.ControllerManager.ExtraArgs["cloud-config"] = "/etc/kubernetes/cloud-config"
 }

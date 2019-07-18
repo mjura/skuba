@@ -35,6 +35,8 @@ import (
 	"github.com/SUSE/skuba/internal/pkg/skuba/kubeadm"
 	"github.com/SUSE/skuba/internal/pkg/skuba/kubernetes"
 	"github.com/SUSE/skuba/pkg/skuba"
+	"github.com/SUSE/skuba/pkg/skuba/actions"
+	"github.com/SUSE/skuba/pkg/skuba/cloud"
 )
 
 // Join joins a new machine to the cluster. The role of the machine will be
@@ -107,6 +109,9 @@ func ConfigPath(role deployments.Role, target *deployments.Target) (string, erro
 	}
 	addFreshTokenToJoinConfiguration(target.Target, joinConfiguration)
 	addTargetInformationToJoinConfiguration(target, role, joinConfiguration)
+	if cloud.HasCloudIntegration(actions.Join) {
+		setCloudConfiguration(joinConfiguration)
+	}
 	finalJoinConfigurationContents, err := kubeadmconfigutil.MarshalKubeadmConfigObject(joinConfiguration)
 	if err != nil {
 		return "", errors.Wrap(err, "could not marshal configuration")
@@ -180,4 +185,12 @@ func createBootstrapToken(target string) (string, error) {
 	}
 
 	return bootstrapTokenRaw, nil
+}
+
+func setCloudConfiguration(joinConfiguration *kubeadmapi.JoinConfiguration) {
+	if joinConfiguration.NodeRegistration.KubeletExtraArgs == nil {
+		joinConfiguration.NodeRegistration.KubeletExtraArgs = map[string]string{}
+	}
+	joinConfiguration.NodeRegistration.KubeletExtraArgs["cloud-provider"] = "openstack"
+	joinConfiguration.NodeRegistration.KubeletExtraArgs["cloud-config"] = "/etc/kubernetes/cloud-config"
 }
