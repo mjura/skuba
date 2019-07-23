@@ -23,21 +23,15 @@ import (
 	"k8s.io/klog"
 
 	"github.com/SUSE/skuba/pkg/skuba"
-	"github.com/SUSE/skuba/pkg/skuba/actions"
 )
 
-func HasCloudIntegration(action actions.Action) bool {
-	switch action {
-	case actions.Bootstrap:
-		if _, err := os.Stat(skuba.OpenstackCloudConfFile()); err == nil {
-			return true
-		} else if _, err := os.Stat(skuba.OpenstackCloudConfTemplateFile()); err == nil {
-			klog.Fatalf("%q file exists, but %q file does not. Please create this file with the expected contents to enable cloud integration", skuba.OpenstackCloudConfTemplateFile(), skuba.OpenstackCloudConfFile())
-		}
-	case actions.Join:
-		if _, err := os.Stat(skuba.OpenstackCloudConfFile()); err == nil {
-                        return true
-		}
+func HasCloudIntegration() bool {
+	if _, err := os.Stat(skuba.OpenstackCloudConfFile()); err == nil {
+		os.Chmod(skuba.OpenstackCloudConfFile(), 0400)
+		return true
+	} else if _, err := os.Stat(skuba.OpenstackCloudConfTemplateFile()); err == nil {
+		klog.Fatalf("%q file exists, but %q file does not. Please create this file with the expected contents to enable cloud integration", skuba.OpenstackCloudConfTemplateFile(), skuba.OpenstackCloudConfFile())
 	}
+
 	return false
 }

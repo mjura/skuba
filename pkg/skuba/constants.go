@@ -147,7 +147,7 @@ func OpenstackCloudConfFile() string {
 
 // OpenstackCloudConfTemplateFile returns the default location of the openstack cloud integrations .conf.template file
 func OpenstackCloudConfTemplateFile() string {
-	return path.Join(OpenstackDir(), "cloud.conf.template")
+	return path.Join(OpenstackDir(), "openstack.conf.template")
 }
 
 // OpenstackConfigRuntimeFile returns the location the openstack.conf is stored on nodes in the cluster

@@ -33,7 +33,6 @@ import (
 	"github.com/SUSE/skuba/internal/pkg/skuba/kubernetes"
 	"github.com/SUSE/skuba/internal/pkg/skuba/node"
 	"github.com/SUSE/skuba/pkg/skuba"
-	"github.com/SUSE/skuba/pkg/skuba/actions"
 	"github.com/SUSE/skuba/pkg/skuba/cloud"
 )
 
@@ -61,10 +60,6 @@ func Bootstrap(bootstrapConfiguration deployments.BootstrapConfiguration, target
 		return err
 	}
 
-	if cloud.HasCloudIntegration(actions.Bootstrap) {
-		setCloudConfiguration(initConfiguration)
-	}
-
 	versionToDeploy := kubernetes.LatestVersion()
 
 	fmt.Println("[bootstrap] updating init configuration with target information")
@@ -72,8 +67,9 @@ func Bootstrap(bootstrapConfiguration deployments.BootstrapConfiguration, target
 		return errors.Wrap(err, "unable to add target information to init configuration")
 	}
 
-	if cloud.HasCloudIntegration(actions.Bootstrap) {
+	if cloud.HasCloudIntegration() {
 		setCloudConfiguration(initConfiguration)
+		setCloudConfigurationPath(initConfiguration)
 	}
 
 	setApiserverAdmissionPlugins(initConfiguration)
@@ -156,11 +152,15 @@ func setApiserverAdmissionPlugins(initConfiguration *kubeadmapi.InitConfiguratio
 }
 
 func setCloudConfigurationPath(initConfiguration *kubeadmapi.InitConfiguration) {
-	cloudConfig := []kubeadmapi.HostPathMount{}
-	test := kubeadmapi.HostPathMount{"cloud-config", "/etc/kubernetes/cloud-config", "/etc/kubernetes/cloud-config", true, "FileOrCreate"}
-	cloudConfig = append(cloudConfig, test)
-	initConfiguration.APIServer.ControlPlaneComponent.ExtraVolumes = cloudConfig
-	initConfiguration.ControllerManager.ExtraVolumes = cloudConfig
+	cloudVolume := []kubeadmapi.HostPathMount{}
+	cloudConfig := kubeadmapi.HostPathMount{"cloud-config",
+						skuba.OpenstackConfigRuntimeFile(),
+						skuba.OpenstackConfigRuntimeFile(),
+						true,
+						"FileOrCreate"}
+	cloudVolume = append(cloudVolume, cloudConfig)
+	initConfiguration.APIServer.ControlPlaneComponent.ExtraVolumes = cloudVolume
+	initConfiguration.ControllerManager.ExtraVolumes = cloudVolume
 }
 
 func setCloudConfiguration(initConfiguration *kubeadmapi.InitConfiguration) {
@@ -169,17 +169,17 @@ func setCloudConfiguration(initConfiguration *kubeadmapi.InitConfiguration) {
 		initConfiguration.NodeRegistration.KubeletExtraArgs = map[string]string{}
 	}
 	initConfiguration.NodeRegistration.KubeletExtraArgs["cloud-provider"] = "openstack"
-	initConfiguration.NodeRegistration.KubeletExtraArgs["cloud-config"] = "/etc/kubernetes/cloud-config"
+	initConfiguration.NodeRegistration.KubeletExtraArgs["cloud-config"] = skuba.OpenstackConfigRuntimeFile()
 
 	if initConfiguration.APIServer.ControlPlaneComponent.ExtraArgs == nil {
 		initConfiguration.APIServer.ControlPlaneComponent.ExtraArgs = map[string]string{}
 	}
 	initConfiguration.APIServer.ControlPlaneComponent.ExtraArgs["cloud-provider"] = "openstack"
-	initConfiguration.APIServer.ControlPlaneComponent.ExtraArgs["cloud-config"] = "/etc/kubernetes/cloud-config"
+	initConfiguration.APIServer.ControlPlaneComponent.ExtraArgs["cloud-config"] = skuba.OpenstackConfigRuntimeFile()
 
 	if initConfiguration.ControllerManager.ExtraArgs == nil {
 		initConfiguration.ControllerManager.ExtraArgs = map[string]string{}
 	}
 	initConfiguration.ControllerManager.ExtraArgs["cloud-provider"] = "openstack"
-	initConfiguration.ControllerManager.ExtraArgs["cloud-config"] = "/etc/kubernetes/cloud-config"
+	initConfiguration.ControllerManager.ExtraArgs["cloud-config"] = skuba.OpenstackConfigRuntimeFile()
 }

@@ -39,18 +39,31 @@ var (
 
 	openstackReadme = strings.ReplaceAll(`# ~Openstack~ integration
  
- Create a file inside this directory named ~cloud.conf~, with the [supported contents](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/provider-configuration.md):
+ Create a file inside this directory named ~openstack.conf~, with the [supported contents](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/provider-configuration.md):
  
  ~~~
  [Global]
- username=user
- password=pass
- auth-url=https://<keystone_ip>/identity/v3
- tenant-id=c869168a828847f39f7f06edd7305637
- domain-id=2a73b8f597c04551a0fdc8e95544be8a
+ auth-url=OS_AUTH_URL
+ username=OS_USERNAME
+ password=OS_PASSWORD
+ tenant-id=OS_PROJECT_ID
+ domain-name=OS_USER_DOMAIN_NAME
+ region=OS_REGION_NAME
+ [LoadBalancer]
+ lb-version=v2
+ subnet-id=PRIVATE_SUBNET_ID
+ floating-network-id=PUBLIC_NET_ID
+ create-monitor=yes
+ monitor-delay=1m
+ monitor-timeout=30s
+ monitor-max-retries=3
+ [BlockStorage]
+ trust-device-path=false
+ bs-version=v2
+ ignore-volume-az=true
  ~~~
  
- You can find a template named cloud.conf.template inside this directory.
+ You can find a template named openstack.conf.template inside this directory.
  
  If this file exists the cloud integration for ~Openstack~ will be automatically
  enabled when you bootstrap the cluster.
@@ -64,10 +77,23 @@ var (
  `, "~", "`")
 
 	openstackCloudConfTemplate = `[Global]
+ auth-url=https://<keystone_ip>/identity/v3
  username=user
  password=pass
- auth-url=https://<keystone_ip>/identity/v3
  tenant-id=c869168a828847f39f7f06edd7305637
- domain-id=2a73b8f597c04551a0fdc8e95544be8a
+ domain-name=UserDomain
+ region=RegionOne
+ [LoadBalancer]
+ lb-version=v2
+ subnet-id=9ec8ad34-ab0e-4e2f-adfe-017b50e379e4
+ floating-network-id=890584bc-da17-424b-9147-2dc8f3d69d64
+ create-monitor=yes
+ monitor-delay=1m
+ monitor-timeout=30s
+ monitor-max-retries=3
+ [BlockStorage]
+ trust-device-path=false
+ bs-version=v2
+ ignore-volume-az=true
  `
 )
